@@ -41,7 +41,7 @@ class YoutubeAss(object):
         "PrimaryColour, SecondaryColour, TertiaryColour, BackColour, Bold, " \
         "Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, " \
         "MarginV, AlphaLevel, Encoding\n"
-        self.Events = "[Events]\nFormat: Marked, Start, End, Style, Name, " \
+        self.Events = "[Events]\nFormat: Layer, Start, End, Style, Name, " \
         "MarginL, MarginR, MarginV, Effect, Text\n"
         self._parse_xml()
         self._convert_to_ass()
@@ -131,20 +131,24 @@ class YoutubeAss(object):
             (align, margins) = self._get_pos(x, y, w, h)
             if each.find('appearance') is not None:
                 # Font colour
-                fgColor = each.find('appearance').get('fgColor')
+                fgColor = hex(int(each.find('appearance').get('fgColor'))).replace("0x", "0")[-6:].upper()
+                fgColor = "0" if fgColor == "00" else "&H{}{}{}&".format(fgColor[-2:], fgColor[-4:-2], fgColor[-6:-4])
                 # TODO: convert this into an ABGR box using Picture event lines
                 # so that it matches the youtube annotations view.
                 # BackColour is the "Outline" of the text, not exactly what we want
-                bgColor = each.find('appearance').get('bgColor')
+                bgColor = hex(int(each.find('appearance').get('bgColor'))).replace("0x", "0")[-6:].upper()
+                bgColor = "0" if bgColor == "00" else "&H{}{}{}&".format(bgColor[-2:], bgColor[-4:-2], bgColor[-6:-4])
+                bgAlpha = float(each.find("appearance").get("bgAlpha")) * 100
             else:
                 # There's no colour, let's use black/white
                 fgColor = '16777215'
                 bgColor = '0'
+                bgAlpha = "50"
             self.events.update({
                 ant_id: {"Text": text.replace("\n", "\\n"), "Start": t1, "End": t2},
             })
             self.styles.update({
-                ant_id: {"PrimaryColour": fgColor, "BackColour": bgColor,
+                ant_id: {"PrimaryColour": fgColor, "BackColour": bgColor, "AlphaLevel": bgAlpha,
                          "Alignment": align, "MarginL": "{0:.2f}".format(margins[0]),
                          "MarginR": "{0:.2f}".format(margins[1]), "MarginV": "{0:.2f}".format(margins[2]),},
             })
@@ -166,7 +170,7 @@ class YoutubeAss(object):
         """
         misc_data = {
             "Fontname": "Arial", "Fontsize": "4.5", "Bold": "0",
-            "Italic": "0", "BorderStyle": "0.1", "Outline": "0.1", "Shadow": "0",
+            "Italic": "0", "BorderStyle": "3", "Outline": "0.1", "Shadow": "0",
             "Encoding": "0",
         }
         for (name, data) in self.styles.items():
@@ -185,12 +189,12 @@ class YoutubeAss(object):
         Notes:
         """
         misc_data = {
-            "Marked": "Marked=0", "Name": "Speaker", "MarginL": "0",
+            "Layer": "0", "Name": "Speaker", "MarginL": "0",
             "MarginR": "0", "MarginV": "0", "Effect": "",
         }
         for (name, data) in self.events.items():
             data.update(misc_data)
-            line = u"Dialogue: {Marked},{Start},{End},{Style}," \
+            line = u"Dialogue: {Layer},{Start},{End},{Style}," \
             "{Name},{MarginL},{MarginR},{MarginV},{Effect},{Text}" \
             "\n".format(Style=name, **data)
             self.Events += line
