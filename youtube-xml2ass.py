@@ -211,11 +211,21 @@ class YoutubeAss(object):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2 or sys.argv[1] in ("--help", "-h"):
-        print("Usage: {0} <filename>".format(sys.argv[0]))
+        print("Usage: {0} <video ID or filename>".format(sys.argv[0]))
         exit(0)
 
-    filename = sys.argv[1]
-    with codecs.open(filename,'r',encoding='utf8') as f:
-        xml_data = f.read()
+    if sys.argv[1].endswith(".xml"):
+        filename = sys.argv[1]
+        with codecs.open(filename,'r',encoding='utf8') as f:
+            xml_data = f.read()
+    elif len(sys.argv[1]) == 11:
+        import requests
+        video_id = sys.argv[1]
+        url = "https://www.youtube.com/annotations_invideo?video_id=" + video_id
+        xml_data = requests.get(url).text
+        filename = video_id
+    else:
+        print("Invalid video ID or filename.")
+        exit(1)
     ass = YoutubeAss(xml_data)
-    ass.save(filename + ".ass")
+    ass.save(filename.replace(".annotations.xml", "") + ".ass")
